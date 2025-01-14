@@ -4,18 +4,17 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using Microsoft.VisualBasic;
 
 namespace CaptureScreenApp
 {
     /*
      * Scrivi un software in c# che avvii una piccola form con un pulsante "Copia". Il click su questo pulsante deve chiedere, solo per la prima volta, di indicare due punti sullo schermo che indicano i vertici di un rettangolo. Una volta identificato questo rettangolo, ad ogni click del pulsante deve eseguire un capture screen di quella porzione di monitor e salvarlo come jpg in una cartella "CrazyPub" sul Desktop dell'utente corrente
      * Modifica così il comportamento dell'applicazione. Aggiungi un pulsante "Multi". Se si clicca tale pulsante, oltre a quanto già detto, richiedi anche di cliccare su un terzo punto e tienilo in memoria. A quel punto chiedi un numero intero e ripeti queste operazioni per il numero di volte indicate da quel numero: cattura lo schermo tra le prime due coordinate, clicca sullo schermo sul terzo punto (simula il click dell'utente su un button di un'altra app in sfondo) e riparti con un nuovo capture dello schermo tra le prime due coordinate. Ad ogni capture incrementa il numero X di uno nel nome del file salvato, che è così strutturato: CrazyCatpture_X. Il numero X deve avere un padding a sinistra con 0 per essere formato in totale da 3 cifre (esempio 002)
+     * Aggiungi un delay di 2 secondi dopo il click, prima di eseguire il capture screen
+     * Quando si completa la procedura, anzichè aprire il popup, visualizza una scritta "TERMINATO" direttamente sulla form. Questa scritta deve sparire quando lancio una nuova cattura
      */
     partial class MainForm : Form
     {
-        private Button btnCapture;
-        private Button btnMulti;
         private Rectangle captureRectangle;
         private Point? firstPoint = null;
         private Point? thirdPoint = null;
@@ -24,32 +23,13 @@ namespace CaptureScreenApp
 
         public MainForm()
         {
-            this.Text = "Screen Capture Tool";
-            this.Size = new Size(400, 200);
-
-            btnCapture = new Button
-            {
-                Text = "Copia",
-                Size = new Size(100, 50),
-                Location = new Point(50, 50),
-                Anchor = AnchorStyles.None
-            };
-            btnCapture.Click += BtnCapture_Click;
-            this.Controls.Add(btnCapture);
-
-            btnMulti = new Button
-            {
-                Text = "Multi",
-                Size = new Size(100, 50),
-                Location = new Point(200, 50),
-                Anchor = AnchorStyles.None
-            };
-            btnMulti.Click += BtnMulti_Click;
-            this.Controls.Add(btnMulti);
+            InitializeComponent();
+            this.Text = "Screen Capture Tool";            
         }
 
         private void BtnCapture_Click(object sender, EventArgs e)
         {
+            ClearStatus();
             if (!isRectangleSet)
             {
                 MessageBox.Show("Seleziona i due punti per il rettangolo cliccando sullo schermo.", "Imposta Rettangolo", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -58,11 +38,13 @@ namespace CaptureScreenApp
             else
             {
                 CaptureScreenAndSave();
+                ShowStatus("TERMINATO");
             }
         }
 
         private void BtnMulti_Click(object sender, EventArgs e)
         {
+            ClearStatus();
             if (!isRectangleSet)
             {
                 MessageBox.Show("Seleziona i due punti per il rettangolo cliccando sullo schermo.", "Imposta Rettangolo", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -78,12 +60,12 @@ namespace CaptureScreenApp
 
                 for (int i = 0; i < repetitions; i++)
                 {
-                    CaptureScreenAndSave();
                     SimulateMouseClick(thirdPoint.Value);
-                    System.Threading.Thread.Sleep(500); // Attesa per evitare conflitti
+                    System.Threading.Thread.Sleep(2000); // Delay di 2 secondi dopo il click
+                    CaptureScreenAndSave();
                 }
 
-                MessageBox.Show("Operazione completata.", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ShowStatus("TERMINATO");
             }
         }
 
@@ -139,7 +121,7 @@ namespace CaptureScreenApp
 
         private int GetRepetitionsFromUser()
         {
-            string input = Interaction.InputBox("Inserisci il numero di ripetizioni:", "Ripetizioni", "1");
+            string input = Microsoft.VisualBasic.Interaction.InputBox("Inserisci il numero di ripetizioni:", "Ripetizioni", "1");
             if (int.TryParse(input, out int repetitions) && repetitions > 0)
             {
                 return repetitions;
@@ -168,11 +150,6 @@ namespace CaptureScreenApp
                     string filePath = Path.Combine(folderPath, $"Capture_{DateTime.Now:yyyyMMdd_HHmmss}_{counter.ToString("0000")}.png");
                     bitmap.Save(filePath, ImageFormat.Png);
                     counter++;
-
-                    if (!thirdPoint.HasValue)
-                    {
-                        MessageBox.Show($"Screenshot salvato in: {filePath}", "Successo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }                    
                 }
             }
             catch (Exception ex)
@@ -185,6 +162,18 @@ namespace CaptureScreenApp
         {
             Cursor.Position = point;
             mouse_event(MouseEventFlags.LeftDown | MouseEventFlags.LeftUp, 0, 0, 0, 0);
+        }
+
+        private void ShowStatus(string message)
+        {
+            lblStatus.Text = message;
+            lblStatus.Visible = true;
+        }
+
+        private void ClearStatus()
+        {
+            lblStatus.Visible = false;
+            lblStatus.Text = string.Empty;
         }
 
         [DllImport("user32.dll")]
