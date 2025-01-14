@@ -12,6 +12,7 @@ namespace CaptureScreenApp
      * Modifica così il comportamento dell'applicazione. Aggiungi un pulsante "Multi". Se si clicca tale pulsante, oltre a quanto già detto, richiedi anche di cliccare su un terzo punto e tienilo in memoria. A quel punto chiedi un numero intero e ripeti queste operazioni per il numero di volte indicate da quel numero: cattura lo schermo tra le prime due coordinate, clicca sullo schermo sul terzo punto (simula il click dell'utente su un button di un'altra app in sfondo) e riparti con un nuovo capture dello schermo tra le prime due coordinate. Ad ogni capture incrementa il numero X di uno nel nome del file salvato, che è così strutturato: CrazyCatpture_X. Il numero X deve avere un padding a sinistra con 0 per essere formato in totale da 3 cifre (esempio 002)
      * Aggiungi un delay di 2 secondi dopo il click, prima di eseguire il capture screen
      * Quando si completa la procedura, anzichè aprire il popup, visualizza una scritta "TERMINATO" direttamente sulla form. Questa scritta deve sparire quando lancio una nuova cattura
+     * Modifica in modo che il tempo tra un click e l'altro non sia fisso a 2 secondi ma sia richiesto all'utente con una inputbox
      */
     partial class MainForm : Form
     {
@@ -20,11 +21,12 @@ namespace CaptureScreenApp
         private Point? thirdPoint = null;
         private bool isRectangleSet = false;
         private int counter = 0;
+        private int delayInMilliseconds = 2000; // Default delay
 
         public MainForm()
         {
             InitializeComponent();
-            this.Text = "Screen Capture Tool";            
+            this.Text = "Screen Capture Tool";
         }
 
         private void BtnCapture_Click(object sender, EventArgs e)
@@ -38,7 +40,6 @@ namespace CaptureScreenApp
             else
             {
                 CaptureScreenAndSave();
-                ShowStatus("TERMINATO");
             }
         }
 
@@ -57,11 +58,12 @@ namespace CaptureScreenApp
             if (thirdPoint.HasValue)
             {
                 int repetitions = GetRepetitionsFromUser();
+                delayInMilliseconds = GetDelayFromUser();
 
                 for (int i = 0; i < repetitions; i++)
                 {
                     SimulateMouseClick(thirdPoint.Value);
-                    System.Threading.Thread.Sleep(2000); // Delay di 2 secondi dopo il click
+                    System.Threading.Thread.Sleep(delayInMilliseconds); // Delay personalizzato
                     CaptureScreenAndSave();
                 }
 
@@ -130,6 +132,20 @@ namespace CaptureScreenApp
             {
                 MessageBox.Show("Inserimento non valido. Verrà utilizzato il valore predefinito (1).", "Avviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return 1;
+            }
+        }
+
+        private int GetDelayFromUser()
+        {
+            string input = Microsoft.VisualBasic.Interaction.InputBox("Inserisci il tempo di attesa tra un click e l'altro (in millisecondi):", "Delay", delayInMilliseconds.ToString());
+            if (int.TryParse(input, out int delay) && delay > 0)
+            {
+                return delay;
+            }
+            else
+            {
+                MessageBox.Show("Inserimento non valido. Verrà utilizzato il valore predefinito (2000 ms).", "Avviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return 2000;
             }
         }
 
